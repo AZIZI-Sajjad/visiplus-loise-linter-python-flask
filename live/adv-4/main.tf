@@ -168,8 +168,11 @@ resource "aws_instance" "app_server_live" {
   # Association du security group à l'instance
   vpc_security_group_ids = [aws_security_group.app_server_live_sg.id]
 
-  # Script d'installation chargé depuis un fichier local (sans interpolation de variables Terraform)
-  user_data = file("${path.module}/scripts/install-docker-and-compose-project.sh")
+  # Script d'installation contenant des variables Terraform, injectées via templatefile() car file() ne fait aucune interpolation
+  user_data = templatefile("${path.module}/templates/install-docker-and-compose-project.sh", {
+      ec2_hostname = var.ec2_hostname
+      app_name     = var.app_name
+    })
 
   # Tags de l'instance
   tags = {

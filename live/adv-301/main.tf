@@ -8,8 +8,7 @@ terraform {
       source = "hashicorp/aws"
 
       # Version du provider AWS
-      # version = "~> 5.92"
-      version = "~> 6.40"
+      version = "~> 5.92"
     }
   }
 
@@ -29,12 +28,6 @@ variable "secret_key" {
   type = string
 }
 
-# Variable pour l'IP à autoriser
-variable "saz_ip" {
-  # Type de la variable
-  type = string
-}
-
 # Configuration du provider AWS
 provider "aws" {
   # Région AWS utilisée
@@ -45,18 +38,6 @@ provider "aws" {
 
   # Clé secrète AWS
   secret_key = var.secret_key
-}
-
-# Variable pour l'IP à autoriser
-variable "ec2_hostname" {
-  # Type de la variable
-  type = string
-}
-
-# Variable pour l'IP à autoriser
-variable "app_name" {
-  # Type de la variable
-  type = string
 }
 
 # Recherche de l'image Ubuntu la plus récente
@@ -80,18 +61,16 @@ data "aws_ami" "ubuntu" {
 # Récupération du VPC par défaut
 data "aws_vpc" "default" {
   # Demande le VPC par défaut
-  # vpc-0a6e5074c2755a2b7
   default = true
 }
-
 
 # Création du security group du serveur applicatif
 resource "aws_security_group" "app_server_live_sg" {
   # Nom du security group
-  name = var.ec2_hostname
+  name = "app_server_live_sg"
 
   # Description du security group
-  description = "allow inbound traffic on port HTTP 80 and allow all outbound"
+  description = "allow inbound traffic on ports 80, 9229, 9230, 3000, 3306 and allow all outbound"
 
   # Association au VPC par défaut
   vpc_id = data.aws_vpc.default.id
@@ -111,13 +90,31 @@ resource "aws_security_group" "app_server_live_sg" {
     protocol = "tcp"
 
     # Autoriser depuis toutes les IP
-    cidr_blocks = [var.saz_ip]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
-  # Autoriser HTTP depuis n'importe quelle IP
+  # Autoriser le port 3000 depuis n'importe quelle IP
   ingress {
     # Description de la règle
-    description = "Allow HTTP (port 80) from saz_ip ip adress"
+    description = "Allow front port (3000)"
+
+    # Port source
+    from_port = 3000
+
+    # Port destination
+    to_port = 3000
+
+    # Protocole utilisé
+    protocol = "tcp"
+
+    # Autoriser depuis toutes les IP
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Autoriser le port 80 depuis n'importe quelle IP
+  ingress {
+    # Description de la règle
+    description = "Allow backend port (80)"
 
     # Port source
     from_port = 80
@@ -129,11 +126,64 @@ resource "aws_security_group" "app_server_live_sg" {
     protocol = "tcp"
 
     # Autoriser depuis toutes les IP
-    cidr_blocks = [var.saz_ip]
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Autoriser le port 9229 depuis n'importe quelle IP
+  ingress {
+    # Description de la règle
+    description = "Allow backend port (9229)"
 
-    # Autoriser tout le trafic sortant
+    # Port source
+    from_port = 9229
+
+    # Port destination
+    to_port = 9229
+
+    # Protocole utilisé
+    protocol = "tcp"
+
+    # Autoriser depuis toutes les IP
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Autoriser le port 9230 depuis n'importe quelle IP
+  ingress {
+    # Description de la règle
+    description = "Allow backend port (9230)"
+
+    # Port source
+    from_port = 9230
+
+    # Port destination
+    to_port = 9230
+
+    # Protocole utilisé
+    protocol = "tcp"
+
+    # Autoriser depuis toutes les IP
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Autoriser le port MariaDB 3306 depuis n'importe quelle IP
+  ingress {
+    # Description de la règle
+    description = "Allow mariadb database port (3306)"
+
+    # Port source
+    from_port = 3306
+
+    # Port destination
+    to_port = 3306
+
+    # Protocole utilisé
+    protocol = "tcp"
+
+    # Autoriser depuis toutes les IP
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Autoriser tout le trafic sortant
   egress {
     # Description de la règle
     description = "Allow all outbound traffic"
@@ -151,8 +201,12 @@ resource "aws_security_group" "app_server_live_sg" {
     cidr_blocks = ["0.0.0.0/0"]
   }
 
+  # Tags du security group
+  tags = {
+    # Nom affiché dans AWS
+    Name = "app_server_live_sg"
+  }
 }
-
 
 # Création de l'instance EC2
 resource "aws_instance" "app_server_live" {
@@ -168,21 +222,13 @@ resource "aws_instance" "app_server_live" {
   # Association du security group à l'instance
   vpc_security_group_ids = [aws_security_group.app_server_live_sg.id]
 
-  # Script d'installation chargé depuis un fichier local (sans interpolation de variables Terraform)
-  user_data = file("${path.module}/scripts/install-docker-and-compose-project.sh")
+# Script d'installation de Docker & Docker compose, qui sera injecté par terraform, et exécuté dans le VPS après la création 
+ # Script d'installation chargé depuis un fichier local
+  user_data = file("${path.module}/scripts/install-docker-and-compose.sh.sh")
 
   # Tags de l'instance
   tags = {
     # Nom affiché dans AWS pour l'instance
-    Name = var.ec2_hostname
+    Name = "learn-terraform"
   }
-}
-
-# Afficher l'IP publique de l'instance créée
-output "instance_public_ip" {
-  # Description de la valeur affichée
-  description = "Adresse IP publique de l'instance"
-
-  # IP publique de l'instance EC2
-  value = aws_instance.app_server_live.public_ip
 }

@@ -78,7 +78,7 @@ resource "aws_security_group" "app_server_live_sg" {
   name = "app_server_live_sg"
 
   # Description du security group
-  description = "allow inbound traffic on ports 80, 9229, 9230, 3000, 3306 and allow all outbound"
+  description = "allow inbound traffic on port HTTP 80 and allow all outbound"
 
   # Association au VPC par défaut
   vpc_id = data.aws_vpc.default.id
@@ -101,10 +101,10 @@ resource "aws_security_group" "app_server_live_sg" {
     cidr_blocks = [var.saz_ip]
   }
 
-  # Autoriser SSH depuis n'importe quelle IP
+  # Autoriser HTTP depuis n'importe quelle IP
   ingress {
     # Description de la règle
-    description = "Allow ssh (port 80) from all ip adress"
+    description = "Allow HTTP (port 80) from saz_ip ip adress"
 
     # Port source
     from_port = 80
@@ -119,78 +119,6 @@ resource "aws_security_group" "app_server_live_sg" {
     cidr_blocks = [var.saz_ip]
   }
 
-  # Autoriser SSH depuis n'importe quelle IP
-  ingress {
-    # Description de la règle
-    description = "Allow ssh (port 9229) from all ip adress"
-
-    # Port source
-    from_port = 9229
-
-    # Port destination
-    to_port = 9229
-
-    # Protocole utilisé
-    protocol = "tcp"
-
-    # Autoriser depuis toutes les IP
-    cidr_blocks = [var.saz_ip]
-  }
-
-
-  # Autoriser SSH depuis n'importe quelle IP
-  ingress {
-    # Description de la règle
-    description = "Allow ssh (port 9230) from all ip adress"
-
-    # Port source
-    from_port = 9230
-
-    # Port destination
-    to_port = 9230
-
-    # Protocole utilisé
-    protocol = "tcp"
-
-    # Autoriser depuis toutes les IP
-    cidr_blocks = [var.saz_ip]
-  }
-
-  # Autoriser SSH depuis n'importe quelle IP
-  ingress {
-    # Description de la règle
-    description = "Allow ssh (port 3000) from all ip adress"
-
-    # Port source
-    from_port = 3000
-
-    # Port destination
-    to_port = 3000
-
-    # Protocole utilisé
-    protocol = "tcp"
-
-    # Autoriser depuis toutes les IP
-    cidr_blocks = [var.saz_ip]
-  }
-
-  # Autoriser SSH depuis n'importe quelle IP
-  ingress {
-    # Description de la règle
-    description = "Allow ssh (port 3306) from all ip adress"
-
-    # Port source
-    from_port = 3306
-
-    # Port destination
-    to_port = 3306
-
-    # Protocole utilisé
-    protocol = "tcp"
-
-    # Autoriser depuis toutes les IP
-    cidr_blocks = [var.saz_ip]
-  }
 
     # Autoriser tout le trafic sortant
   egress {
@@ -243,9 +171,9 @@ resource "aws_instance" "app_server_live" {
         sudo usermod -aG docker ubuntu
 
         # get project
-        cd /home/ubuntu
+        cd /home/ubuntu/
         git clone https://github.com/docker/awesome-compose.git
-        cd /home/ubuntu/awesome-compose/react-express-mysql
+        cd awesome-compose/apache-php
 
         # Démarrer le compose
         sudo -u ubuntu docker compose -f ./compose.yaml up -d
@@ -254,7 +182,7 @@ resource "aws_instance" "app_server_live" {
   # Tags de l'instance
   tags = {
     # Nom affiché dans AWS pour l'instance
-    Name = "learn-terraform"
+    Name = "vps-ec2-apache-php"
   }
 }
 
