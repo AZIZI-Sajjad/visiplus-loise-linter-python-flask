@@ -95,4 +95,14 @@ while true; do
 done
 ```
 
----
+### Réinitialiser et détruire les environnements Terraform adv-1 à adv-4 
+```bash
+for dir in adv-{1..4}; do
+    echo "========== $dir =========="
+    terraform -chdir="./$dir" init -upgrade
+    terraform -chdir="./$dir" destroy -var-file="aws.tfvars" -auto-approve
+    rm -rf "./$dir/.terraform" "./$dir/.terraform.lock.hcl"
+    rm -f "./$dir/terraform.tfstate" "./$dir/terraform.tfstate.backup"
+done
+```
+
